@@ -1,0 +1,11 @@
+groups:
+- name: Prometheus alert
+  rules:
+  - alert: 服务告警
+    expr: up == 0
+    for: 10s # 对任何实例超过 10秒 无法联系的情况发出警报
+    labels:
+      severity: critical
+    annotations:
+      summary: "服务异常,实例:{{ $labels.instance }}"
+      description: "{{ $labels.job }} 服务已关闭"

@@ -1,0 +1,120 @@
+version: '3.9'
+
+volumes:
+  prometheus_data: {}
+  grafana_data: {}
+
+networks:
+  monitoring:
+    driver: bridge
+
+services:
+  # prometheus 用于监控各种服务的性能指标
+  # docs: https://prometheus.io/docs/prometheus/latest/getting_started/
+  prometheus:
+    image: prom/prometheus:v2.45.5
+    #restart: always
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./prometheus/:/etc/prometheus/
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yaml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      # 支持修改配置后，热重载配置
+      # 使用 POST/PUT /-/reload 接口, 例如: curl -X POST http://localhost:19090/-/reload
+      - '--web.enable-lifecycle'
+      # api配置
+      #- '--web.enable-admin-api'
+      # 历史数据最大保留时间，默认15天
+      - '--storage.tsdb.retention.time=30d'
+    networks:
+      - monitoring
+    expose:
+      - '19090'
+    ports:
+      - "19090:9090"
+    #depends_on:
+    #  - cadvisor
+
+
+  # grafana 用于友好美化展示 prometheus 采集的数据
+  # docs:
+  # - https://grafana.com/docs/grafana/latest/getting-started/getting-started-prometheus/
+  # - https://grafana.com/docs/grafana/latest/
+  # - 官方Dashboard: https://grafana.com/grafana/dashboards
+  grafana:
+    image: grafana/grafana:10.4.3
+    #restart: always
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning/:/etc/grafana/provisioning/
+    env_file:
+      - ./grafana/config.env
+    networks:
+      - monitoring
+    ports:
+      - "13000:3000"
+    depends_on:
+      - prometheus
+
+
+  # alertManager 用于接收 prometheus 的告警信息
+  # docs: https://prometheus.io/docs/alerting/alertmanager/
+  alertmanager:
+    image: prom/alertmanager:latest
+    #restart: always
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./alertmanager/:/etc/alertmanager/
+    command:
+      - '--config.file=/etc/alertmanager/config.yaml'
+      - '--storage.path=/alertmanager'
+    networks:
+      - monitoring
+    expose:
+      - '9093'
+    ports:
+      - "19093:9093"
+#
+#
+#  # cadvisor 用于监控 docker 容器资源使用情况
+#  # docs: https://prometheus.io/docs/guides/cadvisor/
+#  cadvisor:
+#    image: google/cadvisor:latest
+#    volumes:
+#      - /etc/localtime:/etc/localtime:ro
+#      - /:/rootfs:ro
+#      - /var/run:/var/run:rw
+#      - /sys:/sys:ro
+#      - /var/lib/docker/:/var/lib/docker:ro
+#    networks:
+#      - monitoring
+#    expose:
+#      - '8080'
+#    ports:
+#      - '18080:8080'
+#
+#
+#  # node_exporter 用于监控主机资源使用情况
+#  # docs: https://prometheus.io/docs/guides/node-exporter/
+#  node_exporter:
+#    image: prom/node-exporter:v1.8.1
+#    volumes:
+#      - /etc/localtime:/etc/localtime:ro
+#      - /proc:/host/proc:ro
+#      - /sys:/host/sys:ro
+#      - /:/rootfs:ro
+#    command:
+#      - '--path.procfs=/host/proc'
+#      - '--path.sysfs=/host/sys'
+#      - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc|rootfs/var/lib/docker)($$|/)'
+#    networks:
+#      - monitoring
+#    ports:
+#      - '19100:9100'
+#
+

@@ -1,0 +1,36 @@
+# Alertmanager configuration
+# https://prometheus.io/docs/alerting/alertmanager/
+global:
+  # 邮箱服务器地址
+  smtp_smarthost: 'smtp.qq.com:587'
+  # 发邮件的邮箱
+  smtp_from: '929024757@qq.com'
+  # 发邮件的邮箱用户名，也就是你的邮箱　　　　　
+  smtp_auth_username: '929024757@qq.com'
+  # 发邮件的邮箱密码
+  smtp_auth_password: 'your-password'
+  # 进行tls验证
+  smtp_require_tls: false
+
+route:
+  group_by: ['alertname']
+  # 当收到告警的时候，等待group_wait配置的时间，看是否还有告警，如果有就一起发出去
+  group_wait: 10s
+  #  如果上次告警信息发送成功，此时又来了一个新的告警数据，则需要等待group_interval配置的时间才可以发送出去
+  group_interval: 10s
+  # 如果上次告警信息发送成功，且问题没有解决，则等待 repeat_interval配置的时间再次发送告警数据
+  repeat_interval: 10m
+  # 全局报警组，这个参数是必选的
+  receiver: email
+
+receivers:
+- name: 'email'
+  # 收邮件的邮箱
+  email_configs:
+  - to: '929024757@qq.com'
+inhibit_rules:
+ - source_match:
+     severity: 'critical'
+   target_match:
+     severity: 'warning'
+   equal: ['alertname', 'dev', 'instance']

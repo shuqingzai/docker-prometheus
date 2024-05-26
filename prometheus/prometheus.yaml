@@ -1,0 +1,60 @@
+# prometheus 配置文件
+# docs: https://prometheus.io/docs/prometheus/latest/configuration/configuration/
+# https://github.com/prometheus/prometheus/blob/main/config/config.go
+
+# 全局配置
+global:
+  scrape_interval:     15s # 将搜刮间隔设置为每15秒一次。默认是每1分钟一次。
+  evaluation_interval: 15s # 每15秒评估一次规则。默认是每1分钟一次。
+
+# alertManager 配置
+alerting:
+  alertmanagers:
+  - static_configs:
+    - targets: ['host.docker.internal:19093']
+
+# 报警(触发器)配置
+rule_files:
+  - "alert.yaml"
+
+# 搜刮配置
+# docs: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#scrape_config
+# https://github.com/prometheus/prometheus/blob/main/config/config.go#L568
+scrape_configs:
+  - job_name: 'prometheus'
+    # 覆盖全局默认值，每15秒从该作业中刮取一次目标
+    scrape_interval: 15s
+    static_configs:
+    - targets: ['localhost:9090']
+
+  # 需要在 docker-compose.yaml 中启动 alertmanager 服务
+  - job_name: 'alertmanager'
+    static_configs:
+    - targets: ['host.docker.internal:19093']
+
+#  # 需要在 docker-compose.yaml 中启动 cadvisor 服务
+#  - job_name: 'cadvisor'
+#    static_configs:
+#    - targets: ['host.docker.internal:18080']
+#      labels:
+#        instance: Prometheus服务器
+#
+#  # 需要在 docker-compose.yaml 中启动 node_exporter 服务
+#  - job_name: 'node-exporter'
+#    static_configs:
+#    - targets: ['host.docker.internal:19100']
+#      labels:
+#        instance: Prometheus服务器
+
+  # 自定义作业
+  - job_name: 'scheduler-gf-tasks'
+    metrics_path: /task-monitoring/metrics # 目标地址，默认为 /metrics
+    # 认证配置
+    basic_auth:
+      username: admin
+      password: maiyuan123 # 密码，注意：密码文件和密码只能配置一个
+      #password_file: /path/to/password/file # 密码文件
+    static_configs:
+      - targets: ["host.docker.internal:8899"]
+        labels:
+          instance: "scheduler-gf 队列任务监控"
